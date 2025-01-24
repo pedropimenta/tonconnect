@@ -10,7 +10,7 @@ const TokenTransfer = () => {
   const DECIMALS = 9;
   
   const connector = new TonConnect({
-    manifestUrl: 'https://orcmine.vercel.app/tonconnect-manifest.json',
+    manifestUrl: 'https://orcmine.vercel.app/manifest.json',
     walletsListSource: 'https://raw.githubusercontent.com/ton-blockchain/wallets-list/main/wallets.json'
   });
 
@@ -53,6 +53,7 @@ const TokenTransfer = () => {
   const handleApprove = async () => {
     try {
       if (!connector.connected) {
+        console.log('connectWallet');
         await connectWallet();
         return false;
       }
@@ -69,6 +70,8 @@ const TokenTransfer = () => {
           }
         }
       };
+
+      console.log('approveData', approveData);
       
       const result = await connector.sendTransaction(approveData);
       console.log('Aprovação:', result);
@@ -82,6 +85,8 @@ const TokenTransfer = () => {
   const handleTransfer = async () => {
     try {
       const approved = await handleApprove();
+
+      console.log('approved', approved);
       if (!approved) return;
 
       const transferData = {
