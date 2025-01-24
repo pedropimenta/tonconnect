@@ -17,20 +17,36 @@ const TokenTransfer = () => {
   const connectWallet = async () => {
     try {
       const walletsList = await connector.getWallets();
-      // Filter for wallets that support browser connection
-      const browserWallets = walletsList.filter(wallet => wallet.bridgeUrl);
       
-      if (browserWallets.length === 0) {
-        throw new Error('No compatible wallets found');
+      // Check if running on mobile
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        // For mobile, use universal link
+        const universalWallet = walletsList.find(wallet => wallet.universalLink);
+        if (universalWallet) {
+          await connector.connect({
+            universalLink: universalWallet.universalLink,
+            bridgeUrl: universalWallet.bridgeUrl
+          });
+        } else {
+          throw new Error('No compatible mobile wallet found');
+        }
+      } else {
+        // For browser extensions
+        const browserWallet = walletsList.find(wallet => wallet.injected);
+        if (browserWallet) {
+          await connector.connect({
+            jsBridgeKey: browserWallet.jsBridgeKey
+          });
+        } else {
+          throw new Error('No compatible browser wallet found');
+        }
       }
-
-      await connector.connect({
-        bridgeUrl: browserWallets[0].bridgeUrl
-      });
       
       setConnected(true);
     } catch (error) {
-      console.error('Erro ao conectar wallet:', error);
+      console.error('Error connecting wallet:', error);
     }
   };
 
