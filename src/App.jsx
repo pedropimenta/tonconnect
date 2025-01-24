@@ -4,7 +4,7 @@ import TonConnect from '@tonconnect/sdk';
 const TokenTransfer = () => {
   const [connected, setConnected] = useState(false);
   const [recipientAddress, setRecipientAddress] = useState('UQAQwryUGbBZEu7mUx11csUTaH66AM3VKuW_ZV1ZkZodJCFD');
-  const [amount, setAmount] = useState('10');
+  const [amount, setAmount] = useState('1');
   
   const TOKEN_CONTRACT = "EQCtDfcHGCw6NSa8JsrMXBrciRUQXJbczqWuA4pR7UGwWw55";
   const DECIMALS = 9;
@@ -63,13 +63,13 @@ const TokenTransfer = () => {
         messages: [
           {
             address: TOKEN_CONTRACT,
-            amount: '0',
+            amount: '1',
             payload: {
               abi: 'approve',
               method: 'approve',
               params: {
                 spender: recipientAddress,
-                value: BigInt(amount * (10 ** DECIMALS)).toString()
+                value: "10"
               }
             }
           }
@@ -102,13 +102,13 @@ const TokenTransfer = () => {
         messages: [
           {
             address: TOKEN_CONTRACT,
-            amount: '0',
+            amount: '1',
             payload: {
               abi: 'transfer',
               method: 'transfer',
               params: {
                 to: recipientAddress,
-                amount: BigInt(amount * (10 ** DECIMALS)).toString()
+                amount: "10"
               }
             }
           }
