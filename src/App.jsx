@@ -73,14 +73,17 @@ const TokenTransfer = () => {
       const forwardAmount = BigInt(4e7); // 0.04 TON for forward fee
       const totalFee = gasAmount + forwardAmount; // 0.1 TON total
 
+      // Create empty payload using base64
+      const emptyPayload = btoa(''); // Convert empty string to base64
+
       const transferData = {
         validUntil: Math.floor(Date.now() / 1000) + 600,
         messages: [
           {
             address: TOKEN_CONTRACT,
             amount: totalFee.toString(),
-            stateInit: null, // Explicitly set stateInit to null
-            bounce: true,    // Enable bounce for failed transactions
+            stateInit: null,
+            bounce: true,
             payload: {
               abi: 'jetton_wallet',
               method: 'transfer',
@@ -91,7 +94,7 @@ const TokenTransfer = () => {
                 response_destination: connector.account.address,
                 custom_payload: null,
                 forward_ton_amount: forwardAmount.toString(),
-                forward_payload: Buffer.from('').toString('base64')
+                forward_payload: emptyPayload // Using btoa instead of Buffer
               }
             }
           }
