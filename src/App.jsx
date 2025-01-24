@@ -10,7 +10,7 @@ const TokenTransfer = () => {
   const DECIMALS = 9;
   
   const connector = new TonConnect({
-    manifestUrl: 'https://tonconnect-hazel.vercel.app/manifest.json',
+    manifestUrl: 'https://tonconnect-hazel.vercel.app/tonconnect-manifest.json.json',
     walletsListSource: 'https://raw.githubusercontent.com/ton-blockchain/wallets-list/main/wallets.json'
   });
 
