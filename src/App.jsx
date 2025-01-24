@@ -59,22 +59,30 @@ const TokenTransfer = () => {
       }
 
       const approveData = {
-        address: TOKEN_CONTRACT,
-        amount: BigInt(amount * (10 ** DECIMALS)),
-        payload: {
-          abi: "approve",
-          method: "approve",
-          params: {
-            spender: recipientAddress,
-            amount: BigInt(amount * (10 ** DECIMALS))
+        validUntil: Math.floor(Date.now() / 1000) + 600, // 10 minutes from now
+        messages: [
+          {
+            address: TOKEN_CONTRACT,
+            amount: '0',
+            payload: {
+              abi: 'approve',
+              method: 'approve',
+              params: {
+                spender: recipientAddress,
+                value: BigInt(amount * (10 ** DECIMALS)).toString()
+              }
+            }
           }
-        }
+        ]
       };
 
       console.log('approveData', approveData);
       
       const result = await connector.sendTransaction(approveData);
       console.log('Aprovação:', result);
+      
+      // Wait for transaction confirmation
+      await new Promise(resolve => setTimeout(resolve, 5000));
       return true;
     } catch (error) {
       console.error('Erro na aprovação:', error);
@@ -90,16 +98,21 @@ const TokenTransfer = () => {
       if (!approved) return;
 
       const transferData = {
-        address: TOKEN_CONTRACT,
-        amount: 0,
-        payload: {
-          abi: "transfer",
-          method: "transfer",
-          params: {
-            to: recipientAddress,
-            amount: BigInt(amount * (10 ** DECIMALS))
+        validUntil: Math.floor(Date.now() / 1000) + 600,
+        messages: [
+          {
+            address: TOKEN_CONTRACT,
+            amount: '0',
+            payload: {
+              abi: 'transfer',
+              method: 'transfer',
+              params: {
+                to: recipientAddress,
+                amount: BigInt(amount * (10 ** DECIMALS)).toString()
+              }
+            }
           }
-        }
+        ]
       };
 
       const result = await connector.sendTransaction(transferData);
@@ -139,7 +152,7 @@ const TokenTransfer = () => {
             onClick={handleTransfer}
             className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
-            Transferir Token
+            Buy
           </button>
         </>
       )}
