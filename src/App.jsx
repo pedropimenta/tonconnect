@@ -50,76 +50,61 @@ const TokenTransfer = () => {
     }
   };
 
-  const handleApprove = async () => {
+  const handleTransfer = async () => {
     try {
       if (!connector.connected) {
         console.log('connectWallet');
         await connectWallet();
-        return false;
+        
+        await new Promise((resolve) => {
+          const checkConnection = setInterval(() => {
+            if (connector.connected) {
+              clearInterval(checkConnection);
+              resolve();
+            }
+          }, 500);
+        });
       }
 
-      const approveData = {
-        validUntil: Math.floor(Date.now() / 1000) + 600, // 10 minutes from now
-        messages: [
-          {
-            address: TOKEN_CONTRACT,
-            amount: '1',
-            payload: {
-              abi: 'approve',
-              method: 'approve',
-              params: {
-                spender: recipientAddress,
-                value: "10"
-              }
-            }
-          }
-        ]
-      };
-
-      console.log('approveData', approveData);
+      const amountInNano = BigInt(amount) * BigInt(10 ** DECIMALS);
       
-      const result = await connector.sendTransaction(approveData);
-      console.log('Aprovação:', result);
-      
-      // Wait for transaction confirmation
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      return true;
-    } catch (error) {
-      console.error('Erro na aprovação:', error);
-      return false;
-    }
-  };
-
-  const handleTransfer = async () => {
-    try {
-      const approved = await handleApprove();
-
-      console.log('approved', approved);
-      if (!approved) return;
+      // Minimum fees required for the transaction
+      const gasAmount = BigInt(6e7);  // 0.06 TON for gas
+      const forwardAmount = BigInt(4e7); // 0.04 TON for forward fee
+      const totalFee = gasAmount + forwardAmount; // 0.1 TON total
 
       const transferData = {
         validUntil: Math.floor(Date.now() / 1000) + 600,
         messages: [
           {
             address: TOKEN_CONTRACT,
-            amount: '1',
+            amount: totalFee.toString(),
+            stateInit: null, // Explicitly set stateInit to null
+            bounce: true,    // Enable bounce for failed transactions
             payload: {
-              abi: 'transfer',
+              abi: 'jetton_wallet',
               method: 'transfer',
               params: {
-                to: recipientAddress,
-                amount: "10"
+                query_id: 0,
+                amount: amountInNano.toString(),
+                destination: recipientAddress,
+                response_destination: connector.account.address,
+                custom_payload: null,
+                forward_ton_amount: forwardAmount.toString(),
+                forward_payload: Buffer.from('').toString('base64')
               }
             }
           }
         ]
       };
 
+      console.log('Transfer data:', transferData);
+      
       const result = await connector.sendTransaction(transferData);
-      console.log('Transferência:', result);
+      console.log('Transfer result:', result);
       
     } catch (error) {
-      console.error('Erro na transferência:', error);
+      console.error('Transfer error:', error);
     }
   };
 
@@ -152,7 +137,7 @@ const TokenTransfer = () => {
             onClick={handleTransfer}
             className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
-            Buy
+            Transfer
           </button>
         </>
       )}
